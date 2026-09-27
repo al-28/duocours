@@ -15,12 +15,13 @@ export default function Home() {
           <input
             aria-label="Sujet à apprendre"
             placeholder="Ex. Je veux apprendre l’électrocinétique"
+            disabled
           />
-          <Link className="primary-button" href="/dashboard">
+          <Link className="primary-button" href="/signup">
             Commencer
           </Link>
         </div>
-        <p className="hint">Une première version du parcours sera générée à l’étape suivante.</p>
+        <p className="hint">La création automatique du parcours arrive à l’étape suivante.</p>
       </section>
     </main>
   );

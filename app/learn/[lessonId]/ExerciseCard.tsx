@@ -14,7 +14,9 @@ type Exercise = {
 export default function ExerciseCard({ exercise, index }: { exercise: Exercise; index: number }) {
   const [state, action, pending] = useActionState(submitExercise, null);
   const [selected, setSelected] = useState<number | null>(null);
+  const [startedAt] = useState(() => Date.now());
   const answered = Boolean(state?.result);
+  const needsReview = Boolean(state?.result?.needs_review);
 
   return (
     <article className="exercise-card">
@@ -26,7 +28,7 @@ export default function ExerciseCard({ exercise, index }: { exercise: Exercise; 
 
       <form action={action} className="answer-form">
         <input type="hidden" name="exerciseId" value={exercise.id} />
-        <input type="hidden" name="startedAt" value={Date.now()} />
+        <input type="hidden" name="startedAt" value={startedAt} />
         <div className="options">
           {(exercise.metadata?.options ?? []).map((option, optionIndex) => (
             <label className={selected === optionIndex ? "option selected" : "option"} key={optionIndex}>
@@ -56,6 +58,9 @@ export default function ExerciseCard({ exercise, index }: { exercise: Exercise; 
             <small>
               Maîtrise du concept : {Math.round(Number(state.result?.mastery_score ?? 0) * 100)}%
             </small>
+            {needsReview ? (
+              <p><strong>Ce concept reste à revoir.</strong> Duocours te proposera une pratique ciblée.</p>
+            ) : null}
           </div>
         )}
       </form>

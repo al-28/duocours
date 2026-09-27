@@ -1,7 +1,19 @@
 import Link from "next/link";
 import { signup } from "@/app/signup/actions";
 
-export default function SignupPage() {
+const errors: Record<string, string> = {
+  invalid: "Utilise un email valide et un mot de passe d’au moins 8 caractères.",
+  failed: "Impossible de créer le compte. Vérifie tes informations ou utilise un autre email.",
+};
+
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const params = await searchParams;
+  const error = params.error ? errors[params.error] : undefined;
+
   return (
     <main className="auth-shell">
       <section className="auth-card">
@@ -9,6 +21,7 @@ export default function SignupPage() {
         <p className="eyebrow">Créer ton compte</p>
         <h1>Commence ton parcours.</h1>
         <p className="auth-subtitle">Un compte te permet de sauvegarder tes cours et ta progression.</p>
+        {error && <p className="form-error" role="alert">{error}</p>}
         <form action={signup} className="auth-form">
           <label>Nom<input name="displayName" type="text" autoComplete="name" maxLength={80} /></label>
           <label>Email<input name="email" type="email" autoComplete="email" required /></label>

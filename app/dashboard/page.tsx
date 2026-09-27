@@ -27,7 +27,7 @@ export default async function DashboardPage() {
         <p className="eyebrow">Ton espace</p>
         <h1>Bonjour, {name}.</h1>
         <p className="subtitle">Ton moteur d’apprentissage va bientôt construire ton premier parcours personnalisé.</p>
-        <Link className="secondary-button" href="/">Créer mon premier cours</Link>
+        <Link className="secondary-button" href="/">Définir mon objectif</Link>
       </section>
     </main>
   );

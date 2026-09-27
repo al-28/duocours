@@ -12,9 +12,9 @@ npm run dev
 ## Architecture
 
 - Next.js + React + TypeScript
-- Supabase for persistence/authentication (Phase 2)
+- Supabase for persistence/authentication
 - Zod for runtime validation
-- AI curriculum generation (Phase 3)
+- AI curriculum generation (next phase)
 - Adaptive learning engine (Phase 4+)
 
 ## Quality rule

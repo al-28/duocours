@@ -15,7 +15,7 @@ export default async function LearnPage({ params, searchParams }: {
   if (!user) redirect("/login");
 
   const { data: lesson } = await supabase.from("lessons")
-    .select("id, title, description, content, level_id").eq("id", lessonId).maybeSingle();
+    .select("id, title, description, content, level_id, position").eq("id", lessonId).maybeSingle();
   if (!lesson) redirect("/dashboard");
 
   const { data: level } = await supabase.from("course_levels")
@@ -31,6 +31,18 @@ export default async function LearnPage({ params, searchParams }: {
     .select("id, prompt, explanation, difficulty, metadata").eq("lesson_id", lessonId)
     .order("created_at", { ascending: true });
 
+  const exerciseIds = (exercises ?? []).map((exercise) => exercise.id);
+  const { data: attempts } = exerciseIds.length
+    ? await supabase.from("learning_attempts")
+        .select("exercise_id, is_correct").eq("user_id", user.id).in("exercise_id", exerciseIds)
+    : { data: [] };
+
+  const attemptedIds = new Set((attempts ?? []).map((attempt) => attempt.exercise_id));
+  const correctAttempts = (attempts ?? []).filter((attempt) => attempt.is_correct).length;
+  const lessonProgress = exerciseIds.length
+    ? Math.round((attemptedIds.size / exerciseIds.length) * 100)
+    : 0;
+
   const conceptIds = (concepts ?? []).map((row) => row.concept_id);
   const { data: masteryRows } = conceptIds.length
     ? await supabase.from("concept_mastery")
@@ -42,12 +54,45 @@ export default async function LearnPage({ params, searchParams }: {
   const conceptNames = (concepts ?? [])
     .map((row) => Array.isArray(row.concepts) ? row.concepts[0]?.name : row.concepts?.name)
     .filter((name): name is string => Boolean(name));
+
   const weakConcept = (concepts ?? []).map((row) => {
     const name = Array.isArray(row.concepts) ? row.concepts[0]?.name : row.concepts?.name;
     return { id: row.concept_id, name, mastery: masteryByConcept.get(row.concept_id) };
   }).filter((item) => Boolean(item.name && item.mastery &&
     (item.mastery.needs_review || Number(item.mastery.score) < 0.75)))
     .sort((a, b) => Number(a.mastery?.score ?? 0) - Number(b.mastery?.score ?? 0))[0];
+
+  const allConceptsMastered = conceptIds.length > 0 &&
+    conceptIds.every((id) => {
+      const mastery = masteryByConcept.get(id);
+      return Boolean(mastery && !mastery.needs_review && Number(mastery.score) >= 0.75);
+    });
+
+  const lessonComplete = exerciseIds.length >= 3 &&
+    attemptedIds.size >= Math.min(3, exerciseIds.length) &&
+    allConceptsMastered;
+
+  let nextLesson: { id: string; title: string; description: string | null } | null = null;
+
+  if (lessonComplete) {
+    const { data: sameLevelNext } = await supabase.from("lessons")
+      .select("id, title, description").eq("level_id", lesson.level_id)
+      .gt("position", lesson.position).order("position", { ascending: true }).limit(1).maybeSingle();
+
+    if (sameLevelNext) {
+      nextLesson = sameLevelNext;
+    } else {
+      const { data: nextLevel } = await supabase.from("course_levels")
+        .select("id").eq("course_id", level.course_id)
+        .gt("position", level.position).order("position", { ascending: true }).limit(1).maybeSingle();
+
+      if (nextLevel) {
+        nextLesson = await supabase.from("lessons")
+          .select("id, title, description").eq("level_id", nextLevel.id)
+          .order("position", { ascending: true }).limit(1).maybeSingle().then((result) => result.data);
+      }
+    }
+  }
 
   const content = (lesson.content ?? {}) as Record<string, unknown>;
   const objectives = Array.isArray(content.objectives)
@@ -58,10 +103,19 @@ export default async function LearnPage({ params, searchParams }: {
       <Link className="brand" href={`/courses/${course?.id}`}>DUOCOURS</Link>
       <Link className="text-button" href={`/courses/${course?.id}`}>Retour au parcours</Link>
     </header>
+
     <section className="lesson-hero">
       <p className="eyebrow">{course?.subject} · {level.title}</p>
       <h1>{lesson.title}</h1><p>{lesson.description}</p>
+      {exercises && exercises.length > 0 ? (
+        <div className="progress-wrap">
+          <div className="progress-label"><span>Progression de la leçon</span><strong>{lessonProgress}%</strong></div>
+          <div className="progress-track"><div className="progress-fill" style={{ width: `${lessonProgress}%` }} /></div>
+          <small>{attemptedIds.size} exercice{attemptedIds.size > 1 ? "s" : ""} tenté{attemptedIds.size > 1 ? "s" : ""} · {correctAttempts} correct{correctAttempts > 1 ? "s" : ""}</small>
+        </div>
+      ) : null}
     </section>
+
     <section className="lesson-content">
       <article className="lesson-card">
         <p className="eyebrow">Objectifs</p>
@@ -74,6 +128,19 @@ export default async function LearnPage({ params, searchParams }: {
 
       {query.error === "generation" ? <p className="form-error">Impossible de générer les exercices pour le moment. Vérifie la configuration IA puis réessaie.</p> : null}
       {query.error === "adaptive_generation" ? <p className="form-error">Impossible de générer la pratique ciblée pour le moment. Réessaie dans quelques instants.</p> : null}
+
+      {lessonComplete ? <article className="completion-card">
+        <div>
+          <p className="eyebrow">Leçon validée</p>
+          <h2>Tu maîtrises les concepts essentiels.</h2>
+          <p>Tu peux maintenant passer à la suite de ton parcours.</p>
+        </div>
+        {nextLesson ? (
+          <Link className="primary-button" href={`/learn/${nextLesson.id}`}>Continuer →</Link>
+        ) : (
+          <Link className="primary-button" href={`/courses/${course?.id}`}>Voir le parcours</Link>
+        )}
+      </article> : null}
 
       {weakConcept ? <article className="adaptive-card">
         <div><p className="eyebrow">Révision ciblée</p>

@@ -46,14 +46,27 @@ export async function generateExercises(formData: FormData) {
 
   try {
     const pack = await generateExercisePack(lessonInput(lesson, conceptNames));
-    const firstConcept = await supabase.from("concepts").select("id")
-      .eq("course_id", level.course_id).in("name", conceptNames).limit(1).maybeSingle();
-    const rows = pack.exercises.map((exercise) => ({
-      lesson_id: lessonId, concept_id: firstConcept.data?.id ?? null,
-      type: exercise.type, prompt: exercise.prompt, explanation: exercise.explanation,
-      difficulty: exercise.difficulty, answer: { correct_index: exercise.correct_index },
-      metadata: { options: exercise.options, generation: "lesson" },
+    const conceptRows = conceptNames.length
+      ? await supabase.from("concepts").select("id, name")
+          .eq("course_id", level.course_id).in("name", conceptNames)
+      : { data: [] };
+
+    const conceptIds = (conceptRows.data ?? []).map((concept) => concept.id);
+    const rows = pack.exercises.map((exercise, index) => ({
+      lesson_id: lessonId,
+      concept_id: conceptIds.length ? conceptIds[index % conceptIds.length] : null,
+      type: exercise.type,
+      prompt: exercise.prompt,
+      explanation: exercise.explanation,
+      difficulty: exercise.difficulty,
+      answer: { correct_index: exercise.correct_index },
+      metadata: {
+        options: exercise.options,
+        generation: "lesson",
+        target_concept: conceptNames.length ? conceptNames[index % conceptNames.length] : null,
+      },
     }));
+
     const { error } = await supabase.from("exercises").insert(rows);
     if (error) throw error;
   } catch (error) {

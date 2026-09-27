@@ -26,3 +26,21 @@ h1{margin:0;font-size:clamp(42px,7vw,76px);line-height:.98;letter-spacing:-.055e
 .adaptive-card{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:24px;background:#f1f5ff;border:1px solid #dbe4ff;border-radius:20px}.adaptive-card .eyebrow{margin:0 0 8px}.adaptive-card h2{margin:0;font-size:22px}.adaptive-card p:not(.eyebrow){margin:8px 0 0;color:var(--muted);line-height:1.55;max-width:620px}.adaptive-card form{flex-shrink:0}@media(max-width:640px){.adaptive-card{align-items:stretch;flex-direction:column}.adaptive-card .primary-button{width:100%}}
 
 .progress-wrap{max-width:560px;margin-top:24px}.progress-label{display:flex;justify-content:space-between;gap:12px;font-size:12px;font-weight:700;color:var(--muted)}.progress-label strong{color:var(--foreground)}.progress-track{height:8px;margin:9px 0 7px;background:#e9e9e4;border-radius:999px;overflow:hidden}.progress-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .25s ease}.progress-wrap small{color:var(--muted);font-size:12px}.completion-card{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:28px;background:#f1f8f2;border:1px solid #d5ead8;border-radius:20px}.completion-card .eyebrow{margin:0 0 8px}.completion-card h2{margin:0;font-size:22px}.completion-card p:not(.eyebrow){margin:8px 0 0;color:var(--muted);line-height:1.5}.completion-card .primary-button{flex-shrink:0}@media(max-width:640px){.completion-card{align-items:stretch;flex-direction:column}.completion-card .primary-button{width:100%}}
+
+.dashboard-courses{margin-top:24px}
+.course-progress-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px}
+.course-progress-main{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.course-progress-main h3{margin:5px 0 0;font-size:24px;letter-spacing:-.03em}
+.course-progress-main>strong{font-size:20px}
+.course-progress-level{margin:7px 0 0;color:var(--muted);font-size:13px}
+.course-progress-stats{display:flex;justify-content:space-between;gap:12px;margin-top:8px;color:var(--muted);font-size:12px}
+.course-progress-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;flex-wrap:wrap}
+.course-progress-actions .primary-button,.course-progress-actions .secondary-button{font-size:13px;padding:11px 14px}
+.course-progress-hero{max-width:650px}
+.course-continue-button{margin-top:22px}
+.course-complete-badge{display:inline-flex;margin-top:22px;padding:10px 13px;border-radius:999px;background:#edf8ef;color:#205f2a;font-size:12px;font-weight:700}
+.level-progress{width:min(420px,100%);margin-top:16px}
+.level-progress .progress-track{margin-bottom:6px}
+.level-progress small{color:var(--muted);font-size:12px}
+.lesson-index.lesson-complete{background:#edf8ef;color:#205f2a}
+@media(max-width:640px){.course-progress-main{align-items:flex-start}.course-progress-main h3{font-size:20px}.course-progress-stats{flex-direction:column}.course-progress-actions{justify-content:stretch}.course-progress-actions a{width:100%}.course-progress-card{padding:20px}}

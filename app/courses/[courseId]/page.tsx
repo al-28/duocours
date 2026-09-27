@@ -2,94 +2,25 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function CoursePage({
-  params,
-}: {
-  params: Promise<{ courseId: string }>;
-}) {
-  const { courseId } = await params;
-  const supabase = await createClient();
+type LessonProgress={complete:boolean;progress:number;attempted:number;totalExercises:number};
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const { data: course } = await supabase
-    .from("courses")
-    .select("id, title, description, subject, status, owner_id")
-    .eq("id", courseId)
-    .maybeSingle();
-
-  if (!course) notFound();
-
-  const { data: levels } = await supabase
-    .from("course_levels")
-    .select("id, title, position")
-    .eq("course_id", courseId)
-    .order("position", { ascending: true });
-
-  const levelIds = (levels ?? []).map((level) => level.id);
-  const { data: lessons } = levelIds.length
-    ? await supabase
-        .from("lessons")
-        .select("id, level_id, title, description, position, content")
-        .in("level_id", levelIds)
-        .order("position", { ascending: true })
-    : { data: [] };
-
-  const lessonCount = lessons?.length ?? 0;
-
-  return (
-    <main className="dashboard">
-      <header className="topbar">
-        <Link className="brand" href="/">DUOCOURS</Link>
-        <Link className="text-button" href="/dashboard">Tableau de bord</Link>
-      </header>
-
-      <section className="course-hero">
-        <p className="eyebrow">{course.subject}</p>
-        <h1>{course.title}</h1>
-        <p>{course.description}</p>
-        <div className="course-meta">
-          <span>{levels?.length ?? 0} niveaux</span>
-          <span>{lessonCount} leçons</span>
-        </div>
-      </section>
-
-      <section className="levels-list">
-        {(levels ?? []).map((level, levelIndex) => {
-          const levelLessons = (lessons ?? [])
-            .filter((lesson) => lesson.level_id === level.id)
-            .sort((a, b) => a.position - b.position);
-
-          return (
-            <article className="level-card" key={level.id}>
-              <div className="level-heading">
-                <div>
-                  <span className="level-number">Niveau {levelIndex + 1}</span>
-                  <h2>{level.title}</h2>
-                </div>
-                <span className="lesson-count">{levelLessons.length} leçons</span>
-              </div>
-
-              <div className="lesson-list">
-                {levelLessons.map((lesson, index) => (
-                  <Link className="lesson-row" href={`/learn/${lesson.id}`} key={lesson.id}>
-                    <span className="lesson-index">{index + 1}</span>
-                    <span>
-                      <strong>{lesson.title}</strong>
-                      <small>{lesson.description}</small>
-                    </span>
-                    <span className="lesson-arrow">→</span>
-                  </Link>
-                ))}
-              </div>
-            </article>
-          );
-        })}
-      </section>
-    </main>
-  );
+export default async function CoursePage({params}:{params:Promise<{courseId:string}>}){
+ const {courseId}=await params; const supabase=await createClient(); const {data:{user}}=await supabase.auth.getUser(); if(!user) redirect("/login");
+ const {data:course}=await supabase.from("courses").select("id,title,description,subject,status,owner_id").eq("id",courseId).maybeSingle(); if(!course) notFound();
+ const {data:levels}=await supabase.from("course_levels").select("id,title,position").eq("course_id",courseId).order("position",{ascending:true});
+ const levelIds=(levels??[]).map(level=>level.id);
+ const {data:lessons}=levelIds.length?await supabase.from("lessons").select("id,level_id,title,description,position").in("level_id",levelIds).order("position",{ascending:true}):{data:[] as {id:string;level_id:string;title:string;description:string|null;position:number}[]};
+ const lessonIds=lessons.map(lesson=>lesson.id);
+ const {data:exercises}=lessonIds.length?await supabase.from("exercises").select("id,lesson_id").in("lesson_id",lessonIds):{data:[] as {id:string;lesson_id:string}[]};
+ const {data:lessonConcepts}=lessonIds.length?await supabase.from("lesson_concepts").select("lesson_id,concept_id").in("lesson_id",lessonIds):{data:[] as {lesson_id:string;concept_id:string}[]};
+ const {data:courseConcepts}=await supabase.from("concepts").select("id").eq("course_id",courseId);
+ const exerciseIds=exercises.map(exercise=>exercise.id); const conceptIds=[...new Set(lessonConcepts.map(row=>row.concept_id))];
+ const {data:attempts}=exerciseIds.length?await supabase.from("learning_attempts").select("exercise_id").eq("user_id",user.id).in("exercise_id",exerciseIds):{data:[] as {exercise_id:string}[]};
+ const {data:masteryRows}=conceptIds.length?await supabase.from("concept_mastery").select("concept_id,score,needs_review").eq("user_id",user.id).in("concept_id",conceptIds):{data:[] as {concept_id:string;score:number;needs_review:boolean}[]};
+ const attemptedExercises=new Set(attempts.map(attempt=>attempt.exercise_id));const exercisesByLesson=new Map<string,string[]>();exercises.forEach(exercise=>exercisesByLesson.set(exercise.lesson_id,[...(exercisesByLesson.get(exercise.lesson_id)??[]),exercise.id]));const conceptsByLesson=new Map<string,string[]>();lessonConcepts.forEach(row=>conceptsByLesson.set(row.lesson_id,[...(conceptsByLesson.get(row.lesson_id)??[]),row.concept_id]));const masteryByConcept=new Map(masteryRows.map(row=>[row.concept_id,row]));
+ const progressByLesson=new Map<string,LessonProgress>();lessons.forEach(lesson=>{const exerciseList=exercisesByLesson.get(lesson.id)??[];const conceptList=conceptsByLesson.get(lesson.id)??[];const allMastered=conceptList.length>0&&conceptList.every(id=>{const mastery=masteryByConcept.get(id);return Boolean(mastery&&!mastery.needs_review&&Number(mastery.score)>=.75)});const attempted=exerciseList.filter(id=>attemptedExercises.has(id)).length;progressByLesson.set(lesson.id,{complete:exerciseList.length>=3&&attempted>=Math.min(3,exerciseList.length)&&allMastered,progress:exerciseList.length?Math.round(attempted/exerciseList.length*100):0,attempted,totalExercises:exerciseList.length});});
+ const completedLessons=[...progressByLesson.values()].filter(item=>item.complete).length;const totalLessons=lessons.length;const courseProgress=totalLessons?Math.round(completedLessons/totalLessons*100):0;const masteredConcepts=conceptIds.filter(id=>{const mastery=masteryByConcept.get(id);return Boolean(mastery&&!mastery.needs_review&&Number(mastery.score)>=.75)}).length;const totalConcepts=(courseConcepts??[]).length;const nextLesson=lessons.find(lesson=>!progressByLesson.get(lesson.id)?.complete);const nextLevel=nextLesson?(levels??[]).find(level=>level.id===nextLesson.level_id):null;
+ return <main className="dashboard"><header className="topbar"><Link className="brand" href="/">DUOCOURS</Link><Link className="text-button" href="/dashboard">Tableau de bord</Link></header>
+ <section className="course-hero"><p className="eyebrow">{course.subject}</p><h1>{course.title}</h1><p>{course.description}</p><div className="progress-wrap course-progress-hero"><div className="progress-label"><span>Progression du parcours</span><strong>{courseProgress}%</strong></div><div className="progress-track"><div className="progress-fill" style={{width:`${courseProgress}%`}}/></div><small>{completedLessons}/{totalLessons} leçons validées · {masteredConcepts}/{totalConcepts} concepts maîtrisés</small></div><div className="course-meta"><span>{levels?.length??0} niveaux</span><span>{totalLessons} leçons</span></div>{nextLesson?<Link className="primary-button course-continue-button" href={`/learn/${nextLesson.id}`}>Continuer{nextLevel?` · ${nextLevel.title}`:""} →</Link>:totalLessons>0?<span className="course-complete-badge">Parcours terminé</span>:null}</section>
+ <section className="levels-list">{(levels??[]).map((level,levelIndex)=>{const levelLessons=lessons.filter(lesson=>lesson.level_id===level.id).sort((a,b)=>a.position-b.position);const completedInLevel=levelLessons.filter(lesson=>progressByLesson.get(lesson.id)?.complete).length;const levelProgress=levelLessons.length?Math.round(completedInLevel/levelLessons.length*100):0;return <article className="level-card" key={level.id}><div className="level-heading"><div><span className="level-number">Niveau {levelIndex+1}</span><h2>{level.title}</h2><div className="level-progress"><div className="progress-track"><div className="progress-fill" style={{width:`${levelProgress}%`}}/></div><small>{completedInLevel}/{levelLessons.length} leçons · {levelProgress}%</small></div></div><span className="lesson-count">{levelLessons.length} leçons</span></div><div className="lesson-list">{levelLessons.map((lesson,index)=>{const item=progressByLesson.get(lesson.id);return <Link className="lesson-row" href={`/learn/${lesson.id}`} key={lesson.id}><span className={`lesson-index ${item?.complete?"lesson-complete":""}`}>{item?.complete?"✓":index+1}</span><span><strong>{lesson.title}</strong><small>{item?.complete?"Leçon validée":item?.totalExercises?`${item.attempted}/${item.totalExercises} exercices tentés · ${item.progress}%`:lesson.description}</small></span><span className="lesson-arrow">{item?.complete?"✓":"→"}</span></Link>})}</div></article>})}</section></main>;
 }

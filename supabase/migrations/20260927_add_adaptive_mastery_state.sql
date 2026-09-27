@@ -16,7 +16,7 @@ create or replace function public.submit_learning_attempt(
 )
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $function$
 declare

@@ -17,21 +17,7 @@ export async function signup(formData: FormData) {
     options: { data: { display_name: displayName } },
   });
 
-  if (error) redirect("/signup?error=failed");
-  if (!data.user) redirect("/signup?error=failed");
-
-  const { error: profileError } = await supabase.from("profiles").upsert({
-    id: data.user.id,
-    display_name: displayName,
-  });
-
-  if (profileError) redirect("/signup?error=profile");
-
-  const { error: settingsError } = await supabase.from("user_settings").upsert({
-    user_id: data.user.id,
-  });
-
-  if (settingsError) redirect("/signup?error=settings");
+  if (error || !data.user) redirect("/signup?error=failed");
 
   if (data.session) redirect("/dashboard");
   redirect("/login?created=1");
